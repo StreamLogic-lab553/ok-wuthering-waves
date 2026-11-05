@@ -13,9 +13,9 @@
 
 **源码 PR 不会切换已安装程序的更新源。** 当前 `pyappify.yml` 的 China / Global 仍指向官方发行更新仓库，直接使用官方启动器更新会继续运行官方代码。本 PR 提供源码维护方案；尚未建立本 fork 的独立发行仓库、安装包与自动更新渠道。原有官方安装及本地恢复插件可以继续使用。
 
-## 合并上游更新
+## 选择性引入上游更新
 
-`master` 维护本 fork 的可用版本；每次从它创建同步分支，将上游更新合并进来，再向 **本 fork** 提 PR。不要用上游分支强制覆盖 `master`。
+`master` 维护本 fork 的可用版本，由维护者决定保留和调整哪些功能。原项目发布新版本后，先阅读版本说明与提交差异，选定需要的更新，再从本 fork 创建更新分支，向 **本 fork** 提 PR。默认按需移植，不自动跟随上游版本，也不使用上游分支强制覆盖 `master`。
 
 以下 PowerShell 命令假设 `origin` 指向 `StreamLogic-lab553/ok-wuthering-waves`、`upstream` 指向 `ok-oldking/ok-wuthering-waves`；如未配置后者，先运行 `git remote add upstream https://github.com/ok-oldking/ok-wuthering-waves.git`。从干净工作区开始，每条命令成功后再继续：
 
@@ -24,9 +24,13 @@ git fetch origin
 git fetch upstream
 git switch master
 git merge --ff-only origin/master
-git switch -c codex/sync-upstream-YYYYMMDD
-git merge --no-ff upstream/master
+git switch -c codex/pick-upstream-YYYYMMDD
+git log --oneline master..upstream/master
+git show <选定的提交SHA>
+git cherry-pick -x <选定的提交SHA>
 ```
+
+将尖括号占位符替换为实际提交 SHA，再执行对应命令。逐个检查所选提交的前置依赖，按依赖顺序引入；提交已被 cherry-pick 后会获得新 SHA，`master..upstream/master` 仍可能列出原提交，应结合 `git cherry -v master upstream/master` 与实际代码差异避免重复引入。一个提交混合多个功能或依赖过多时，手动移植需要的部分并记录原提交 SHA，再正常提交。只有明确决定接受上游全部未合入改动时，才使用 `git merge --no-ff upstream/master`。
 
 发生冲突时先解决，不要直接采用整份上游文件。特别核对 `config.py` 中工坊注册、`CharacterCodeTab` 与 `CustomCharLoader` 的接口、Qt / ok-script 依赖变更。保留注册但底层模块已被删除也会失效，必须移植缺失实现或重新适配后才能合并。
 
@@ -36,7 +40,7 @@ git push -u origin HEAD
 gh pr create --repo StreamLogic-lab553/ok-wuthering-waves --base master
 ```
 
-每次还应阅读上游更新说明，运行受影响模块的测试。新增的 **Workshop compatibility** Actions 工作流会检查工坊注册、页面构造、目录处理、ZIP 导入确认及上游队伍代码回归。工作流只做检查，不自动同步或合并；首次在 fork 使用时，如 Actions 被禁用，需要在仓库 Actions 页面启用。
+每次还应运行所选更新影响模块的测试，并在 PR 中列出引入的上游提交、相关依赖和验证结果。新增的 **Workshop compatibility** Actions 工作流会检查工坊注册、页面构造、目录处理、ZIP 导入确认及上游队伍代码回归。工作流只做检查，不自动同步或合并；首次在 fork 使用时，如 Actions 被禁用，需要在仓库 Actions 页面启用。
 
 专用检查复用上游工坊行为测试，并运行完整队伍加载测试；既有 **Run Tests** 工作流继续运行全量测试。基线 v3.7.19 的 `test_team_state_dot_is_level_with_the_team_name` 在本地和 Windows CI 均出现 1 px 字体对齐差异（要求 ≤ 0.5 px），已在恢复 PR 记录；本改动保留其实现与断言，不将字体像素检查加入工坊专用套件。
 
