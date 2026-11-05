@@ -20,8 +20,6 @@ on:
 permissions:
   actions: read
   contents: read
-  pages: write
-  id-token: write
 
 concurrency:
   group: pages
@@ -37,26 +35,30 @@ jobs:
           python-version: "3.12"
           cache: pip
           cache-dependency-path: pyproject.toml
-      - name: Configure GitHub Pages
-        uses: actions/configure-pages@v6
       - name: Install documentation dependencies
         run: |
           python -m pip install "mkdocs-material>=9.5,<10"
           python -m pip install --no-deps ".[docs]"
       - run: mkdocs build --strict
-      - if: github.event_name != 'pull_request'
+      # Forks validate documentation without requiring or publishing a Pages site.
+      - if: github.repository == 'ok-oldking/ok-wuthering-waves' && github.event_name != 'pull_request'
         uses: actions/upload-pages-artifact@v5
         with:
           path: site
 
   deploy:
-    if: github.event_name != 'pull_request'
+    if: github.repository == 'ok-oldking/ok-wuthering-waves' && github.event_name != 'pull_request'
     needs: build
     runs-on: ubuntu-latest
+    permissions:
+      pages: write
+      id-token: write
     environment:
       name: github-pages
       url: ${{ steps.deployment.outputs.page_url }}
     steps:
+      - name: Configure GitHub Pages
+        uses: actions/configure-pages@v6
       - name: Deploy to GitHub Pages
         id: deployment
         uses: actions/deploy-pages@v5

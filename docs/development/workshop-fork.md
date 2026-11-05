@@ -44,4 +44,6 @@ gh pr create --repo StreamLogic-lab553/ok-wuthering-waves --base master
 
 专用检查复用上游工坊行为测试，并运行完整队伍加载测试；既有 **Run Tests** 工作流继续运行全量测试。基线 v3.7.19 的 `test_team_state_dot_is_level_with_the_team_name` 在本地和 Windows CI 均出现 1 px 字体对齐差异（要求 ≤ 0.5 px），已在恢复 PR 记录；本改动保留其实现与断言，不将字体像素检查加入工坊专用套件。
 
+**Documentation** 工作流在本 fork 中保留 `mkdocs build --strict` 文档构建检查，跳过 GitHub Pages 配置、站点产物上传和网站部署。网站发布仅允许原仓库 `ok-oldking/ok-wuthering-waves` 的非 PR 事件执行；本 fork 无需启用 Pages。后续移植上游工作流更新时，应保留构建检查与站点发布的边界，避免重新引入缺少 Pages 站点的 404 错误。
+
 测试通过后，用临时配置启动并检查入口、浏览目录、取消导入和确认导入，再合并同步 PR。检查失败时先修复兼容性，不要为通过检查而移除工坊注册或跳过测试。CI 是兼容性信号，不保证未来任意上游版本都能直接合并。
