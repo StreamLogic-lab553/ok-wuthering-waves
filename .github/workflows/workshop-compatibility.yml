@@ -1,0 +1,32 @@
+name: Workshop compatibility
+
+on:
+  pull_request:
+    branches: [master]
+  push:
+    branches: [master, 'codex/**']
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  workshop:
+    runs-on: windows-latest
+    timeout-minutes: 20
+    env:
+      PYTHONUTF8: '1'
+      QT_QPA_PLATFORM: windows
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          lfs: true
+          persist-credentials: false
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+          cache: pip
+      - name: Install runtime dependencies
+        run: py -3.12 -m pip install -r requirements.txt
+      - name: Check workshop registration, UI and archive regressions
+        run: py -3.12 -u run_test.py tests.TestTeamWorkshopTab tests.TestCustomCharLoader
