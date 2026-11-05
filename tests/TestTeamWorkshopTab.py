@@ -145,5 +145,23 @@ class WorkshopTests(unittest.TestCase):
                 clear_team_char_cache()
 
 
+def load_tests(loader, tests, pattern):
+    # Reuse upstream's workshop behavior checks. Its full UI suite, including
+    # font rasterization tests, still runs separately in the existing workflow.
+    from tests.TestCharacterCodeTab import TestCharacterCodeTab
+    related = {
+        "test_team_lists_three_editable_character_codes",
+        "test_team_dialogs_use_qt_kit_widgets",
+        "test_team_info_shows_the_description_an_import_keeps",
+    }
+    names = set(loader.getTestCaseNames(TestCharacterCodeTab))
+    if not related <= names:
+        raise AssertionError("Upstream team-code regression tests changed; review compatibility.")
+    for name in sorted(names):
+        if "workshop" in name or name in related:
+            tests.addTest(TestCharacterCodeTab(name))
+    return tests
+
+
 if __name__ == "__main__":
     unittest.main()

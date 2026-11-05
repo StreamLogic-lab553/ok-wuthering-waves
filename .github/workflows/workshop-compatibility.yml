@@ -29,4 +29,4 @@ jobs:
       - name: Install runtime dependencies
         run: py -3.12 -m pip install -r requirements.txt
       - name: Check workshop registration, UI and archive regressions
-        run: py -3.12 -u run_test.py tests.TestTeamWorkshopTab tests.TestCharacterCodeTab tests.TestCustomCharLoader
+        run: py -3.12 -u run_test.py tests.TestTeamWorkshopTab tests.TestCustomCharLoader

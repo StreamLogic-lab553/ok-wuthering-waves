@@ -31,11 +31,13 @@ git merge --no-ff upstream/master
 发生冲突时先解决，不要直接采用整份上游文件。特别核对 `config.py` 中工坊注册、`CharacterCodeTab` 与 `CustomCharLoader` 的接口、Qt / ok-script 依赖变更。保留注册但底层模块已被删除也会失效，必须移植缺失实现或重新适配后才能合并。
 
 ```powershell
-py -3.12 -u run_test.py tests.TestTeamWorkshopTab tests.TestCharacterCodeTab tests.TestCustomCharLoader
+py -3.12 -u run_test.py tests.TestTeamWorkshopTab tests.TestCustomCharLoader
 git push -u origin HEAD
 gh pr create --repo StreamLogic-lab553/ok-wuthering-waves --base master
 ```
 
 每次还应阅读上游更新说明，运行受影响模块的测试。新增的 **Workshop compatibility** Actions 工作流会检查工坊注册、页面构造、目录处理、ZIP 导入确认及上游队伍代码回归。工作流只做检查，不自动同步或合并；首次在 fork 使用时，如 Actions 被禁用，需要在仓库 Actions 页面启用。
+
+专用检查复用上游工坊行为测试，并运行完整队伍加载测试；既有 **Run Tests** 工作流继续运行全量测试。基线 v3.7.19 的 `test_team_state_dot_is_level_with_the_team_name` 在本地和 Windows CI 均出现 1 px 字体对齐差异（要求 ≤ 0.5 px），已在恢复 PR 记录；本改动保留其实现与断言，不将字体像素检查加入工坊专用套件。
 
 测试通过后，用临时配置启动并检查入口、浏览目录、取消导入和确认导入，再合并同步 PR。检查失败时先修复兼容性，不要为通过检查而移除工坊注册或跳过测试。CI 是兼容性信号，不保证未来任意上游版本都能直接合并。
