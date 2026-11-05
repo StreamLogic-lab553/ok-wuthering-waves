@@ -26,6 +26,8 @@
 
 ### [English](docs/en/index.md) | 中文说明 | [繁體中文](docs/zh-TW/index.md) | [日本語](docs/ja/index.md)
 
+本 fork 保留“角色工坊”入口，支持浏览公共配置和原生队伍代码编辑、导入、导出。源码运行与后续上游合并方式见[工坊维护说明](docs/development/workshop-fork.md)。
+
 **演示与教程:** [![YouTube](https://img.shields.io/badge/YouTube-%23FF0000.svg?style=for-the-badge&logo=YouTube&logoColor=white)](https://youtu.be/h6P1KWjdnB4)
 
 ---

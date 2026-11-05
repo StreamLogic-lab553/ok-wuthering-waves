@@ -159,6 +159,8 @@ monthly_card_config_option = ConfigOption('Monthly Card Config', {
 config = {
     'debug': False,  # Optional, default: False
     'custom_tasks': True,
+    # Fork-maintained workshop adapter; keep this entry when merging upstream.
+    'custom_tabs': [['src.gui.TeamWorkshopTab', 'TeamWorkshopTab']],
     "gui": {
         "type": "qt",
     },
