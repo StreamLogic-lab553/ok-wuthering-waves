@@ -1,5 +1,9 @@
 import re
 import cv2
+import json
+from datetime import datetime
+from pathlib import Path
+from uuid import uuid4
 from dataclasses import dataclass
 
 from ok import Logger
@@ -196,10 +200,18 @@ class NightmareNestTask(WWOneTimeTask, BaseCombatTask):
         self.openF2Book("gray_book_boss")
 
         while self.queues:
-            self.queues[0]()
-            if nest := self.find_nest():
-                self._nest_tab_of_current_nest = self.queues[0].__name__
-                return nest
+            action = self.queues[0]
+            action()
+            # A single empty OCR result is not evidence that this page is done.
+            for attempt in range(3):
+                if nest := self.find_nest():
+                    self._nest_tab_of_current_nest = action.__name__
+                    return nest
+                if action.__name__ == 'go_nest' and attempt == 0:
+                    self._save_empty_nest_scan()
+                if attempt < 2:
+                    self.sleep(0.5)
+                    self.next_frame()
             self.queues.pop(0)
 
     def _init_queue(self):
@@ -208,10 +220,16 @@ class NightmareNestTask(WWOneTimeTask, BaseCombatTask):
         if 'Tacet Discord Nest' in quests:
             actions.append(self.go_nest)
             actions.append(self.go_nest_scroll)
+            # Revisit the first page before the nightmare tab changes the scroll.
+            # Reuse go_nest so unreachable/death cache keys remain identical.
+            actions.append(self.go_nest)
         if 'Nightmare Purification' in quests:
             actions.append(self.go_nightmare)
             actions.append(self.go_nightmare_scroll)
         self.queues = actions
+        self._empty_nest_scan_saved = False
+        self._last_nest_ocr = []
+        self._last_nest_frame = None
 
     def go_nightmare(self):
         self.open_boss_book('mengyan')
@@ -224,13 +242,76 @@ class NightmareNestTask(WWOneTimeTask, BaseCombatTask):
 
     def go_nest(self):
         self.open_boss_book('canxiang')
+        # PR #1719 measured the thumb at .197-.761 (top) and .319-.882
+        # (bottom). Click the track above the latter; never use wheel/drag.
+        for _ in range(3):
+            self.click(0.9730, 0.197, after_sleep=0.6)
+            self.next_frame()
+            if self._nest_scrollbar_at_top(self.frame):
+                self.sleep(0.4)
+                self.next_frame()
+                if self._nest_scrollbar_at_top(self.frame):
+                    return
+        self._save_empty_nest_scan(reason='top-not-confirmed')
+        raise RuntimeError('Nightmare nest list top could not be confirmed')
+
+    @staticmethod
+    def _nest_scrollbar_at_top(frame):
+        if frame is None or not frame.size:
+            return False
+        height, width = frame.shape[:2]
+        # Only inspect the thin scrollbar, not the bright cards behind it.
+        strip = frame[int(height * .19):int(height * .89),
+                      int(width * .972):int(width * .9745)]
+        if not strip.size:
+            return False
+        gray = cv2.cvtColor(strip, cv2.COLOR_BGR2GRAY)
+        rows = (gray > 160).any(axis=1).nonzero()[0]
+        start = previous = None
+        for row in rows:
+            if previous is None or row - previous > 2:
+                start = row
+            if row - start >= height * .3 and start + int(height * .19) <= height * .215:
+                return True
+            previous = row
+        return False
+
+    def _save_empty_nest_scan(self, reason='empty'):
+        if reason == 'empty' and getattr(self, '_empty_nest_scan_saved', False):
+            return
+        # Keep diagnostics local, outside tracked sources. Crop out the bottom
+        # account identifier; preserve exactly the frame used by the last OCR.
+        try:
+            frame = self._last_nest_frame if reason == 'empty' else self.frame
+            height, width = frame.shape[:2]
+            folder = Path('logs') / 'nightmare-nest'
+            folder.mkdir(parents=True, exist_ok=True)
+            stem = datetime.now().strftime('%Y%m%d-%H%M%S-') + uuid4().hex[:8]
+            crop = frame[int(height * .13):int(height * .96), int(width * .35):]
+            success, encoded = cv2.imencode('.png', crop)
+            if not success:
+                raise RuntimeError('Could not encode nightmare nest diagnostic')
+            (folder / (stem + '.png')).write_bytes(encoded.tobytes())
+            payload = {'reason': reason, 'action': self.queues[0].__name__,
+                       'frameSize': [width, height], 'ocrRegion': [.35, .25, 1, .96],
+                       'ocrStatus': 'completed' if reason == 'empty' else 'not-run',
+                       'counts': self._last_nest_ocr if reason == 'empty' else None}
+            (folder / (stem + '.json')).write_text(json.dumps(payload, ensure_ascii=False, indent=2), encoding='utf-8')
+            if reason == 'empty':
+                self._empty_nest_scan_saved = True
+            self.log_info(f'Nightmare nest diagnostic saved: {folder / stem}')
+        except Exception as error:
+            self.log_info(f'Could not save nightmare nest diagnostic: {error}')
 
     def go_nest_scroll(self):
         self.open_boss_book('canxiang')
         self.click(0.9730, 0.8806, after_sleep=1)
 
     def find_nest(self):
-        counts = self.ocr(0.35, 0.25, 1, 0.96, match=self.count_re)
+        self._last_nest_frame = self.frame.copy()
+        counts = self.ocr(0.35, 0.25, 1, 0.96, match=self.count_re, frame=self._last_nest_frame)
+        self._last_nest_ocr = [dict(name=box.name, x=box.x, y=box.y,
+                                    width=box.width, height=box.height) for box in counts]
         for count_box in counts:
             for match in re.finditer(self.count_re, count_box.name):
                 numerator = match.group(1)
