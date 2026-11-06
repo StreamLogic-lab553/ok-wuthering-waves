@@ -309,7 +309,9 @@ class NightmareNestTask(WWOneTimeTask, BaseCombatTask):
 
     def find_nest(self):
         self._last_nest_frame = self.frame.copy()
-        counts = self.ocr(0.35, 0.25, 1, 0.96, match=self.count_re, frame=self._last_nest_frame)
+        # Keep raw OCR such as O/48 for diagnosis; the original progress regex
+        # and zero-only selection remain below, after the evidence is copied.
+        counts = self.ocr(0.35, 0.25, 1, 0.96, frame=self._last_nest_frame)
         self._last_nest_ocr = [dict(name=box.name, x=box.x, y=box.y,
                                     width=box.width, height=box.height) for box in counts]
         for count_box in counts:

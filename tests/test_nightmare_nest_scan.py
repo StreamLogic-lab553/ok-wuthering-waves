@@ -165,6 +165,18 @@ class NightmareNestScanTest(unittest.TestCase):
         self.assertIsNotNone(task.find_nest())
         self.assertLess(LAYOUT['bottomHalfRow'][1], task.ocr.call_args.args[1])
 
+    def test_unmatched_ocr_text_is_kept_for_empty_scan_diagnosis(self):
+        task = self.task()
+        task.count_re = re.compile(r'(\d{1,2})/(\d{1,2})')
+        task.queues = [Mock(__name__='go_nest')]
+        raw = FakeBox('O/48', y=390)
+        # Model the OCR API's optional filtering: a misread must survive in
+        # diagnostics even though it is not eligible to be selected.
+        task.ocr = Mock(side_effect=lambda *args, **kwargs:
+                        [raw] if not kwargs.get('match') or kwargs['match'].search(raw.name) else [])
+        self.assertIsNone(task.find_nest())
+        self.assertEqual(task._last_nest_ocr[0]['name'], 'O/48')
+
     def test_diagnostics_keep_exact_ocr_and_exclude_account_strip(self):
         task = self.task()
         task.queues = [Mock(__name__='go_nest')]
