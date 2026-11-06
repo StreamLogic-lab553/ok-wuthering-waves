@@ -1,5 +1,7 @@
 import unittest
 import re
+from types import SimpleNamespace
+import numpy as np
 
 from src.task.BaseCombatTask import CharRevivedException
 from src.task.NightmareNestTask import NestTarget, NightmareNestTask
@@ -22,7 +24,7 @@ class TestNightmareNestTask(unittest.TestCase):
         task.tr = str
         task.config = {'Which to Farm': ['Nightmare Purification', 'Tacet Discord Nest']}
         task._init_queue()
-        self.assertEqual(['go_nest', 'go_nest_scroll', 'go_nightmare', 'go_nightmare_scroll'],
+        self.assertEqual(['go_nest', 'go_nest_scroll', 'go_nest', 'go_nightmare', 'go_nightmare_scroll'],
                          [action.__name__ for action in task.queues])
 
     def test_capture_success_clears_combat_before_post_combat_waits(self):
@@ -157,6 +159,7 @@ class TestNightmareNestTask(unittest.TestCase):
 
     def test_find_nest_skips_cached_unreachable_row(self):
         task = NightmareNestTask.__new__(NightmareNestTask)
+        task._executor = SimpleNamespace(frame=np.zeros((1000, 2000, 3), dtype=np.uint8))
         task.tr = str
         task.count_re = re.compile(r"(\d{1,2})/(\d{1,2})")
         task.queues = [lambda: None]
